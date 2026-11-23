@@ -1,31 +1,21 @@
 package br.com.zenon.fraud;
 
-import java.math.BigDecimal;
+import java.io.IOException;
+import java.util.List;
 
 public class Main {
-    public static void main(String[] args) {
-        Customer origin = new Customer(
-                "Igor",
-                new BigDecimal("300.00"),
-                new BigDecimal("250.00")
-        );
 
-        Customer destination = new Customer(
-                "Julia",
-                new BigDecimal("100.00"),
-                new BigDecimal("150.00")
-        );
+    public static void main(String[] args) throws IOException {
+        String fileName =
+                "data/PS_20174392719_1491204439457_log.csv";
 
-        Transaction transaction = new Transaction(
-                1,
-                PaymentType.TRANSFER,
-                new BigDecimal("50.00"),
-                origin,
-                destination,
-                false,
-                false
-        );
+        TransactionIngestor ingestor = new TransactionIngestor();
 
-        System.out.println(transaction);
+        List<Transaction> transactions =
+                ingestor.ingest(fileName);
+
+        transactions.stream()
+                .limit(10)
+                .forEach(System.out::println);
     }
 }
