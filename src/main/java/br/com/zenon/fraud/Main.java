@@ -1,48 +1,88 @@
 package br.com.zenon.fraud;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.util.List;
 
 public class Main {
+
+    private static final int WARM_UP_REPETITIONS = 10;
+    private static final int BENCHMARK_REPETITIONS = 100;
 
     public static void main(String[] args) throws IOException {
         String fileName =
                 "data/PS_20174392719_1491204439457_log.csv";
 
         TransactionIngestor ingestor = new TransactionIngestor();
-        FraudAnalyzer analyzer = new FraudAnalyzer();
-
         List<Transaction> transactions =
-                ingestor.ingest(fileName, 50_000);
+                ingestor.ingest(fileName, 100_000);
 
-        List<Transaction> frauds = analyzer.findFrauds(transactions);
+        TransactionRepository listRepository =
+                new TransactionListRepository(transactions);
 
-        System.out.println("1. Total de Fraudes: " + frauds.size());
+        printSearchResult(listRepository, "C12345");
+        printSearchResult(listRepository, "C1231006815");
 
-        System.out.println("2. Top 3 Fraudes de Maior Valor:");
-        analyzer.findTopThreeFrauds(frauds)
-                .forEach(transaction ->
-                        System.out.println(formatMoney(transaction.amount()))
-                );
+        Transaction lastTransaction =
+                transactions.get(transactions.size() - 1);
+        String lastOriginName = lastTransaction.origin().name();
 
-        System.out.println("3. Clientes Suspeitos:");
-        analyzer.findTopFiveSuspiciousCustomers(frauds)
-                .forEach(System.out::println);
+        TransactionRepository mapRepository =
+                new TransactionMapRepository(transactions);
 
-        System.out.println(
-                "4. Prejuízo Total: "
-                        + formatMoney(analyzer.calculateTotalLoss(frauds))
+        warmUp(listRepository, lastOriginName);
+        warmUp(mapRepository, lastOriginName);
+
+        long listTime = measureAverageSearchTime(
+                listRepository,
+                lastOriginName
+        );
+        long mapTime = measureAverageSearchTime(
+                mapRepository,
+                lastOriginName
         );
 
-        System.out.println("5. Fraudes por Tipo:");
-        analyzer.countFraudsByType(frauds)
-                .forEach((type, count) ->
-                        System.out.println(" - " + type + ": " + count)
+        System.out.println("Cliente usado no pior caso: " + lastOriginName);
+        System.out.println("Tempo médio da busca na List: " + listTime + " ns");
+        System.out.println("Tempo médio da busca no Map: " + mapTime + " ns");
+    }
+
+    private static void printSearchResult(
+            TransactionRepository repository,
+            String originName
+    ) {
+        repository.findByOriginName(originName)
+                .ifPresentOrElse(
+                        System.out::println,
+                        () -> System.out.println(
+                                "Transação não encontrada para o cliente " + originName
+                        )
                 );
     }
 
-    private static String formatMoney(BigDecimal value) {
-        return value.setScale(2).toPlainString();
+    private static void warmUp(
+            TransactionRepository repository,
+            String originName
+    ) {
+        for (int repetition = 0;
+             repetition < WARM_UP_REPETITIONS;
+             repetition++) {
+            repository.findByOriginName(originName).orElseThrow();
+        }
+    }
+
+    private static long measureAverageSearchTime(
+            TransactionRepository repository,
+            String originName
+    ) {
+        long start = System.nanoTime();
+
+        for (int repetition = 0;
+             repetition < BENCHMARK_REPETITIONS;
+             repetition++) {
+            repository.findByOriginName(originName).orElseThrow();
+        }
+
+        long elapsed = System.nanoTime() - start;
+        return elapsed / BENCHMARK_REPETITIONS;
     }
 }
