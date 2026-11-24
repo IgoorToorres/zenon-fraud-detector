@@ -94,4 +94,25 @@ class TransactionIngestorTest {
                 transactions.get(transactions.size() - 1).origin().name()
         );
     }
+
+    @Test
+    void shouldRespectRequestedLineLimit() throws Exception {
+        Path csv = tempDirectory.resolve("custom-limit.csv");
+        Files.writeString(
+                csv,
+                String.join(System.lineSeparator(),
+                        HEADER,
+                        "1,PAYMENT,10.00,C1,10.00,0.00,M1,0.00,0.00,0,0",
+                        "1,TRANSFER,20.00,C2,20.00,0.00,C3,0.00,20.00,0,0",
+                        "2,CASH_IN,30.00,C4,0.00,30.00,C5,0.00,0.00,0,0"),
+                UTF_8
+        );
+
+        List<Transaction> transactions =
+                new TransactionIngestor().ingest(csv.toString(), 2);
+
+        assertEquals(2, transactions.size());
+        assertEquals("C1", transactions.get(0).origin().name());
+        assertEquals("C2", transactions.get(1).origin().name());
+    }
 }

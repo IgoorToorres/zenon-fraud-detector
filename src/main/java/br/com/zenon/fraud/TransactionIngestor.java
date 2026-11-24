@@ -11,11 +11,18 @@ import java.util.Optional;
 
 public class TransactionIngestor {
 
-    private static final int MAX_TRANSACTIONS = 1_000;
+    private static final int DEFAULT_MAX_TRANSACTIONS = 1_000;
 
     public List<Transaction> ingest(String fileName) throws IOException {
+        return ingest(fileName, DEFAULT_MAX_TRANSACTIONS);
+    }
+
+    public List<Transaction> ingest(
+            String fileName,
+            int maxTransactions
+    ) throws IOException {
         List<Transaction> transactions =
-                new ArrayList<>(MAX_TRANSACTIONS);
+                new ArrayList<>(maxTransactions);
 
         Path filePath = Path.of(fileName);
 
@@ -25,7 +32,7 @@ public class TransactionIngestor {
             String line;
             int linesRead = 0;
 
-            while (linesRead < MAX_TRANSACTIONS
+            while (linesRead < maxTransactions
                     && (line = reader.readLine()) != null) {
                 linesRead++;
                 parse(line).ifPresent(transactions::add);
